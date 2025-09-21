@@ -7,6 +7,7 @@ Author Will Jay (willjayeo). October 2022
 import argparse
 import logging
 import numpy
+import rioxarray
 import xarray
 
 from matplotlib import pyplot
@@ -59,21 +60,13 @@ def normalise_arrays(
     return img_a_array_normalised, img_b_array_normalised
 
 
-def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
-    """ """
-
-    # Open data with xarray
-    img_a_dataset = xarray.open_dataset(img_a_path)
-    img_b_dataset = xarray.open_dataset(img_b_path)
-
-    # Get numpy arrays from datasets
-    # TODO: Output should have the shape (1, 1, rows, cols). Dimension 1 is band, dimension 2 is spatial reference?
-    img_a_array = img_a_dataset.to_dataarray()
-    img_b_array = img_b_dataset.to_dataarray()
-
-    # Normalise array values by the combined range of values
-    img_a_array_normalised, img_b_array_normalised = normalise_arrays(img_a_array, img_b_array)
-
+def make_rgb_stack(
+    img_a_array_normalised: xarray.DataArray, img_b_array_normalised: xarray.DataArray
+) -> xarray.DataArray:
+    """
+    Return a three band array with the shape of row, col, band containing an RGB
+    composite of the two images
+    """
 
     # TODO: Get a good contrast?
 
@@ -83,25 +76,39 @@ def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
         (img_a_array_normalised, img_a_array_normalised, img_b_array_normalised)
     )
 
-    # Drop the spatial reference dimension (index 1)
-    rgb_array = numpy.squeeze(rgb_array, axis=1)
+    # TODO: Need to determine exactly what dimensions to drop for differnt datasets. Sentinel2 MSI data appears to have this extra dimension at index 1. Otherdatasets might have completely differnt arrayshapes
+    if len(rgb_array) == 4:
+        # Drop the spatial reference dimension (index 1)
+        rgb_array = numpy.squeeze(rgb_array, axis=1)
 
     # Transpose dimensions so that it has the shape of (row, col, band)
     rgb_array = rgb_array.transpose((1, 2, 0))
 
-    pyplot.imshow(rgb_array, interpolation="nearest")
-    pyplot.show()
+    return rgb_array
+
+
+def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
+    """ """
+
+    # Open data as xarray.DataArray objects
+    img_a_array = rioxarray.open_rasterio(img_a_path)
+    img_b_array = rioxarray.open_rasterio(img_b_path)
 
     # TODO: Resample to larger pixel array if inputs are differnt grids
 
     # TODO: CROP AREA OF INTEREST WITH COORDINATES
 
+    # Normalise array values by the combined range of values
+    img_a_array_normalised, img_b_array_normalised = normalise_arrays(img_a_array, img_b_array)
+
     # TODO: CONTRAST STRETCH THE IMAGES
 
-    # TODO: ASSIGN RGB BANDS TO THE TWO IMAGES
+    # Create a RGB stack
+    rgb_array = make_rgb_stack(img_a_array_normalised, img_b_array_normalised)
 
-    # TODO WRITE OUT RGB MAP, PERHAPS AS A NICE PLOT?
-    # Create plot
+    # Visualise RGB stack
+    pyplot.imshow(rgb_array, interpolation="nearest")
+    pyplot.show()
 
 
 if __name__ == "__main__":
