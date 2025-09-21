@@ -23,6 +23,7 @@ def setup_logger(verbose: bool = False, debug: bool = False):
     else:
         logging.setLevel(logging.WARNING)
 
+
 def resample_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tuple:
     """
     Resample the array with the finer resolution to the grid of the array with the
@@ -35,7 +36,7 @@ def resample_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tup
 
     # If array a is larger, reproject array b to the dimensions of array a
     else:
-       array_b = array_b.rio.reproject_match(array_a)
+        array_b = array_b.rio.reproject_match(array_a)
 
     return array_a, array_b
 
@@ -102,7 +103,13 @@ def make_rgb_stack(
 
 
 def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
-    """ """
+    """
+    Steps:
+        * Read data as arrays
+        * Resample data if they have different grids
+        * Normalise values
+        * Visualise
+    """
 
     # Open data as xarray.DataArray objects
     img_a_array = rioxarray.open_rasterio(img_a_path)
@@ -117,7 +124,9 @@ def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
     # TODO: CROP AREA OF INTEREST WITH COORDINATES
 
     # Normalise array values by the combined range of values
-    img_a_array_normalised, img_b_array_normalised = normalise_arrays(img_a_array, img_b_array)
+    img_a_array_normalised, img_b_array_normalised = normalise_arrays(
+        img_a_array, img_b_array
+    )
 
     # TODO: CONTRAST STRETCH THE IMAGES
 
