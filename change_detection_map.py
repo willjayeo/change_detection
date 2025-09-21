@@ -1,7 +1,7 @@
-#! /usr/bin/env python
+#!/usr/bin/env python3
 """
-Create a simple change detection map from two single band satellite images in a GDAL supported format
-Author Will Jay (willjayeo). October 2022
+Create a simple change detection map from two single band satellite images in a supported format
+Author William Jay (willjayeo). October 2022
 """
 
 import argparse
@@ -88,10 +88,11 @@ def make_rgb_stack(
     """
 
     # Stack arrays into RGB
-    # TODO: Use differnt cases to control colour
     rgb_array = numpy.vstack((array_a, array_a, array_b))
 
-    # TODO: Need to determine exactly what dimensions to drop for differnt datasets. Sentinel2 MSI data appears to have this extra dimension at index 1. Otherdatasets might have completely differnt arrayshapes
+    # TODO: Need to determine exactly what dimensions to drop for different datasets.
+    # Sentinel2 MSI data appears to have this extra dimension at index 1. Other
+    # datasets might have completely different array shapes
     if len(rgb_array) == 4:
         # Drop the spatial reference dimension (index 1)
         rgb_array = numpy.squeeze(rgb_array, axis=1)
@@ -115,20 +116,16 @@ def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
     img_a_array = rioxarray.open_rasterio(img_a_path)
     img_b_array = rioxarray.open_rasterio(img_b_path)
 
-    # Identify whether the data have differnt grids as we will need to resample the
+    # Identify whether the data have different grids as we will need to resample the
     # higher (finer) resolution grid to matchs the lower (coarser) resolution grid
     if img_a_array.shape != img_b_array.shape:
 
         img_a_array, img_b_array = resample_arrays(img_a_array, img_b_array)
 
-    # TODO: CROP AREA OF INTEREST WITH COORDINATES
-
     # Normalise array values by the combined range of values
     img_a_array_normalised, img_b_array_normalised = normalise_arrays(
         img_a_array, img_b_array
     )
-
-    # TODO: CONTRAST STRETCH THE IMAGES
 
     # Create a RGB stack
     rgb_array = make_rgb_stack(img_a_array_normalised, img_b_array_normalised)

@@ -1,10 +1,10 @@
-# change_detection #
+﻿# change_detection #
 
 Make simple change detection map from two single band satellite images.
 
 ## Installation ##
 
-You can install the dependancies to run this program by creating a conda environment with the provided YAML file:
+You can install the dependencies to run this program by creating a conda environment with the provided YAML file:
 
 ```bash
 conda env create -f environment.yml
@@ -18,9 +18,9 @@ conda activate change_detection
 
 ## Usage ##
 
-This program creates a change map of two single band images, such as satellite data spectral bands. Identify the approproate bands that have the clearest contrast of the features you want to visualise the change of and input them as arguments for the`change_detection_map.py` script.
+This program creates a change map of two single band images, such as satellite data spectral bands. Identify the appropriate bands that have the clearest contrast of the features you want to visualise the change of and input them as arguments for the`change_detection_map.py` script.
 
-Run the code by exectuing `change_detection_map.py` script. It requires two arguments:
+Run the code by executing `change_detection_map.py` script. It requires two arguments:
 
  * `--img_a` or `-a`: The path to the first input image
  * `--img_b` or `-b`: The path to the second input image
@@ -31,7 +31,7 @@ Example below using two Landsat 5 band images:
 img_a_path=~/data/change_detection/aral_sea/inputs/LT05_L1TP_161028_19880602_20200917_02_T1_B5.TIF
 img_b_path=~/data/change_detection/aral_sea/inputs/LT05_L1TP_161028_20100530_20200824_02_T1_B5.TIF
 
-change_detection_map.py -a ${img_a_path} -b ${img_b_path}
+./change_detection_map.py -a ${img_a_path} -b ${img_b_path}
 ```
 
 These images are from the same location of the Aral Sea. The first image is from 1988 and the second image is from 2010, where a significant reduction of water is visible.
