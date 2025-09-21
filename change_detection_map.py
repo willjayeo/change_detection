@@ -23,6 +23,22 @@ def setup_logger(verbose: bool = False, debug: bool = False):
     else:
         logging.setLevel(logging.WARNING)
 
+def resample_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tuple:
+    """
+    Resample the array with the finer resolution to the grid of the array with the
+    coarser resolution
+    """
+
+    # If array a is larger, reproject array a to the dimensions of array b
+    if sum(array_a.shape) > sum(array_b.shape):
+        array_a = array_a.rio.reproject_match(array_b)
+
+    # If array a is larger, reproject array b to the dimensions of array a
+    else:
+       array_b = array_b.rio.reproject_match(array_a)
+
+    return array_a, array_b
+
 
 def normalise_arrays(
     img_a_array: xarray.DataArray, img_b_array: xarray.DataArray
@@ -61,20 +77,18 @@ def normalise_arrays(
 
 
 def make_rgb_stack(
-    img_a_array_normalised: xarray.DataArray, img_b_array_normalised: xarray.DataArray
+    array_a: xarray.DataArray, array_b: xarray.DataArray
 ) -> xarray.DataArray:
     """
     Return a three band array with the shape of row, col, band containing an RGB
     composite of the two images
-    """
 
-    # TODO: Get a good contrast?
+    Input arrays must have identical dimensions
+    """
 
     # Stack arrays into RGB
     # TODO: Use differnt cases to control colour
-    rgb_array = numpy.vstack(
-        (img_a_array_normalised, img_a_array_normalised, img_b_array_normalised)
-    )
+    rgb_array = numpy.vstack((array_a, array_a, array_b))
 
     # TODO: Need to determine exactly what dimensions to drop for differnt datasets. Sentinel2 MSI data appears to have this extra dimension at index 1. Otherdatasets might have completely differnt arrayshapes
     if len(rgb_array) == 4:
@@ -94,7 +108,11 @@ def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
     img_a_array = rioxarray.open_rasterio(img_a_path)
     img_b_array = rioxarray.open_rasterio(img_b_path)
 
-    # TODO: Resample to larger pixel array if inputs are differnt grids
+    # Identify whether the data have differnt grids as we will need to resample the
+    # higher (finer) resolution grid to matchs the lower (coarser) resolution grid
+    if img_a_array.shape != img_b_array.shape:
+
+        img_a_array, img_b_array = resample_arrays(img_a_array, img_b_array)
 
     # TODO: CROP AREA OF INTEREST WITH COORDINATES
 
