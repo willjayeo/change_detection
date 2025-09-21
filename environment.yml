@@ -1,0 +1,10 @@
+name: change_detection
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - libgdal-jp2openjpeg
+  - matplotlib
+  - rioxarray
+  - xarray

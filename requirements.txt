@@ -1,2 +1,0 @@
-xarray
-libgdal-jp2openjpeg
