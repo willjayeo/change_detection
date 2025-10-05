@@ -25,20 +25,25 @@ Run the code by executing `change_detection_map.py` script. It requires two argu
  * `--image_a` or `-a`: The path to the first input image
  * `--image_b` or `-b`: The path to the second input image
 
-There is one further optional arguent:
+There are two further optional arguents:
 
-* `--rgb`: This allows you to control what colour channel each image uses. It expects a string of three characters, either 'a', 'b' or '0'. 'a' represents `--image_a`, 'b' represents `--image_b` and '0' represents an empty channel. The order of these characters need to follow the order you would like them assigned to the Red, Green and Blue channels, in that order.
+ * `--rgb`: This allows you to control what colour channel each image uses. It expects a string of three characters, either 'a', 'b' or '0'. 'a' represents `--image_a`, 'b' represents `--image_b` and '0' represents an empty channel. The order of these characters need to follow the order you would like them assigned to the Red, Green and Blue channels, in that order.
+ * `--bbox`: This allows you to input a bounding box of coordinates to spatially subset an area of interest for the output image. These coordinates must match the input data coordinate system. It expects four coordinates in the order of:
+ 1) Minimum longitude
+ 2) Maximum longitude 
+ 3) Minimum latitude
+ 4) Maximum latitude
 
 Examples:
 
-* `--rgb abb` would procude a map where 'bright' pixels in image a but not in image b would be red, 'bright' pixels in image b but not in image a would be cyan, pixels of equal brightness would be greyscale. The output image comprises the following channels:
-  * Red:\t`--image_a`
-  * Green:\t`--image_b`
-  * Blue:\t`--image_b`
-* `--rgb a0b` would procude a map where 'bright' pixels in image a but not in image b would be red, 'bright' pixels in image b but not in image a would be blue, pixels of equal brightness would be greyscale. The output image comprises the following channels:
-  * Red:\t`--image_a`
-  * Green:\tempty
-  * Blue:\t`--image_b`
+ * `--rgb abb` would procude a map where 'bright' pixels in image a but not in image b would be red, 'bright' pixels in image b but not in image a would be cyan, pixels of equal brightness would be greyscale. The output image comprises the following channels:
+  * Red:   `--image_a`
+  * Green: `--image_b`
+  * Blue:  `--image_b`
+ * `--rgb a0b` would procude a map where 'bright' pixels in image a but not in image b would be red, 'bright' pixels in image b but not in image a would be blue, pixels of equal brightness would be greyscale. The output image comprises the following channels:
+  * Red:  `--image_a`
+  * Green: empty
+  * Blue:  `--image_b`
 
 Example below using two Landsat 5 band images:
 
