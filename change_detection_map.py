@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Create a simple change detection map from two single band satellite images in a supported format
+Create a simple change detection map from two single band satellite images in a
+supported format
+
 Author William Jay (willjayeo). October 2022
 """
 
@@ -25,7 +27,16 @@ def setup_logger(verbose: bool = False, debug: bool = False):
 
 
 def get_rgb_map_from_string(rgb_map_str: str) -> tuple:
-    """ """
+    """
+    Returns a tuple containing the input RGB order string.
+
+    Examples:
+        'abb' returns ('a', 'b', 'b')
+        'ab0' returns ('a', 'b', None)
+
+    ValueError is raised if the input string does not not comprise three characters
+    or any of the characters are not either 'a', 'b' or '0'
+    """
 
     if len(rgb_map_str) != 3:
         raise ValueError(
@@ -141,12 +152,24 @@ def make_rgb_stack(
 def sort_arrays_into_rgb_order(
     array_a: xarray.DataArray, array_b: xarray.DataArray, rgb_order: tuple
 ) -> list:
-    """ """
+    """
+    Return a list of arrays in the defined RGB order.
+
+    The rgb_order variable is expected to be a tuple containing three items. Each of
+    these items is expected to be either 'a', 'b' or None. The output tuple from the
+    function get_rgb_map_from_string produces this sort of tuple
+
+    Examples:
+        rgb_order of ('a', 'a', 'b') would sort arrays into a channel order of:
+            R: array_a, G: array_a, B: array_a
+        rgb_order of ('a', 'b', 'None') would sort arrays into a channel order of:
+            R: array_a, G: array_b, B: blank array
+    """
 
     # Make dictionary of arrays with 'a' or 'b' as they keys
     arrays = {"a": array_a, "b": array_b}
 
-    # Iterate through the RGB order tuple and populate a list of arrays in the RGB order 
+    # Iterate through the RGB order tuple and populate a list of arrays in the RGB order
     channel_list = []
     for key in rgb_order:
 
