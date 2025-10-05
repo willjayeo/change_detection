@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Create a simple change detection map from two single band satellite images in a supported format
+Create a simple change detection map from two single band satellite images in a
+supported format
+
 Author William Jay (willjayeo). October 2022
 """
 
@@ -24,6 +26,48 @@ def setup_logger(verbose: bool = False, debug: bool = False):
         logging.setLevel(logging.WARNING)
 
 
+def get_rgb_map_from_string(rgb_map_str: str) -> tuple:
+    """
+    Returns a tuple containing the input RGB order string.
+
+    Examples:
+        'abb' returns ('a', 'b', 'b')
+        'ab0' returns ('a', 'b', None)
+
+    ValueError is raised if the input string does not not comprise three characters
+    or any of the characters are not either 'a', 'b' or '0'
+    """
+
+    if len(rgb_map_str) != 3:
+        raise ValueError(
+            f"--rgb must be exactly 3 characters long: input '{rgb_map_str}' is invalid"
+        )
+
+    # Create list to populate output with
+    result = []
+
+    # Iterate through each colour
+    for colour in rgb_map_str:
+
+        # If colour is 'a' or 'b' then add them to the output list. If the colour is
+        # '0', then add None
+        match colour:
+
+            case "a":
+                result.append("a")
+
+            case "b":
+                result.append("b")
+
+            case "0":
+                result.append(None)
+
+            case _:
+                raise ValueError(f"Invalid character in --rgb: '{colour}'")
+
+    return tuple(result)
+
+
 def resample_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tuple:
     """
     Resample the array with the finer resolution to the grid of the array with the
@@ -41,19 +85,17 @@ def resample_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tup
     return array_a, array_b
 
 
-def normalise_arrays(
-    img_a_array: xarray.DataArray, img_b_array: xarray.DataArray
-) -> tuple:
+def normalise_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tuple:
     """
     Return arrays containing data normalised to the maximum range of the combined
     input arrays
     """
 
     # Get data value ranges
-    min_a = img_a_array.min()
-    max_a = img_a_array.max()
-    min_b = img_b_array.min()
-    max_b = img_b_array.max()
+    min_a = array_a.min()
+    max_a = array_a.max()
+    min_b = array_b.min()
+    max_b = array_b.max()
 
     # Get the lowest value of the combined arrays
     if max_a > max_b:
@@ -71,14 +113,16 @@ def normalise_arrays(
     data_range = range_max - range_min
 
     # Normalise data
-    img_a_array_normalised = (img_a_array - range_min) / data_range
-    img_b_array_normalised = (img_b_array - range_min) / data_range
+    array_a_normalised = (array_a - range_min) / data_range
+    array_b_normalised = (array_b - range_min) / data_range
 
-    return img_a_array_normalised, img_b_array_normalised
+    return array_a_normalised, array_b_normalised
 
 
 def make_rgb_stack(
-    array_a: xarray.DataArray, array_b: xarray.DataArray
+    array_a: xarray.DataArray,
+    array_b: xarray.DataArray,
+    rgb_map=tuple,
 ) -> xarray.DataArray:
     """
     Return a three band array with the shape of row, col, band containing an RGB
@@ -87,8 +131,10 @@ def make_rgb_stack(
     Input arrays must have identical dimensions
     """
 
+    channels = sort_arrays_into_rgb_order(array_a, array_b, rgb_map)
+
     # Stack arrays into RGB
-    rgb_array = numpy.vstack((array_a, array_a, array_b))
+    rgb_array = numpy.vstack(channels)
 
     # TODO: Need to determine exactly what dimensions to drop for different datasets.
     # Sentinel2 MSI data appears to have this extra dimension at index 1. Other
@@ -103,7 +149,42 @@ def make_rgb_stack(
     return rgb_array
 
 
-def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
+def sort_arrays_into_rgb_order(
+    array_a: xarray.DataArray, array_b: xarray.DataArray, rgb_order: tuple
+) -> list:
+    """
+    Return a list of arrays in the defined RGB order.
+
+    The rgb_order variable is expected to be a tuple containing three items. Each of
+    these items is expected to be either 'a', 'b' or None. The output tuple from the
+    function get_rgb_map_from_string produces this sort of tuple
+
+    Examples:
+        rgb_order of ('a', 'a', 'b') would sort arrays into a channel order of:
+            R: array_a, G: array_a, B: array_a
+        rgb_order of ('a', 'b', 'None') would sort arrays into a channel order of:
+            R: array_a, G: array_b, B: blank array
+    """
+
+    # Make dictionary of arrays with 'a' or 'b' as they keys
+    arrays = {"a": array_a, "b": array_b}
+
+    # Iterate through the RGB order tuple and populate a list of arrays in the RGB order
+    channel_list = []
+    for key in rgb_order:
+
+        if key is None:
+            channel_list.append(numpy.zeros_like(array_a))
+
+        else:
+            channel_list.append(arrays[key])
+
+    return channel_list
+
+
+def main(
+    img_a_path: str, img_b_path: str, rgb_map_str: str, verbose=False, debug=False
+):
     """
     Steps:
         * Read data as arrays
@@ -115,6 +196,10 @@ def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
     # Open data as xarray.DataArray objects
     img_a_array = rioxarray.open_rasterio(img_a_path)
     img_b_array = rioxarray.open_rasterio(img_b_path)
+
+    # Get band order from the user input, we do this early so invalid options can be
+    # detected
+    rgb_map = get_rgb_map_from_string(rgb_map_str)
 
     # Identify whether the data have different grids as we will need to resample the
     # higher (finer) resolution grid to matchs the lower (coarser) resolution grid
@@ -128,7 +213,7 @@ def main(img_a_path: str, img_b_path: str, verbose=False, debug=False):
     )
 
     # Create a RGB stack
-    rgb_array = make_rgb_stack(img_a_array_normalised, img_b_array_normalised)
+    rgb_array = make_rgb_stack(img_a_array_normalised, img_b_array_normalised, rgb_map)
 
     # Visualise RGB stack
     pyplot.imshow(rgb_array, interpolation="nearest")
@@ -146,7 +231,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-a",
-        "--img_a",
+        "--image_a",
         type=str,
         default=None,
         required=True,
@@ -154,12 +239,22 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-b",
-        "--img_b",
+        "--image_b",
         default=None,
         required=True,
         help="Path to second input image",
     )
 
+    parser.add_argument(
+        "--rgb",
+        default="aab",
+        help=(
+            "RGB mapping as three characters (either 'a', 'b' or '0').\nE.g. 'aab' "
+            "results in R = --image_a, G = --image_a and B = --image_b or 'a0b' "
+            "results in R = --image_a, G = empty and B = --image_b"
+        ),
+    )
+
     cmdline = parser.parse_args()
 
-    main(cmdline.img_a, cmdline.img_b)
+    main(cmdline.image_a, cmdline.image_b, cmdline.rgb)
