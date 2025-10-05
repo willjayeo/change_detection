@@ -121,38 +121,46 @@ def img_get_spatial_subset_of_array(
     return clipped
 
 
-def normalise_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tuple:
+def normalise_arrays(
+    array: xarray.DataArray,
+    percentile_range: list = None,
+    clip: bool = True,
+) -> tuple:
     """
-    Return arrays containing data normalised to the maximum range of the combined
-    input arrays
+    Return array containing data normalised to values between 0 to 1.
+
+    An optional percentile_range argument can be input in order to provide a contrast
+    stretch to the values. This expects a two item list comprising of the minimum
+    percentile and the maximum percentile in that order. For example, `[2, 98]` would
+    result in a 2% contrast stretch.
     """
 
-    # Get data value ranges
-    min_a = array_a.min()
-    max_a = array_a.max()
-    min_b = array_b.min()
-    max_b = array_b.max()
+    # If there is no percentile clip input, then normalise using the minimum and maximum
+    # values of the combined two datasets
+    if percentile_range is not None:
 
-    # Get the lowest value of the combined arrays
-    if max_a > max_b:
-        range_max = max_a
+        # Get minimum and maximum percentiles that have been input
+        percentile_minimum, percentile_maximum = percentile_range
+
+        # Calcualte percentile values from combined array
+        min_value, max_value = numpy.percentile(
+            array, [percentile_minimum, percentile_maximum]
+        )
+
     else:
-        range_max = max_b
 
-    # Get the maximum value of the combined arrays
-    if min_a < min_b:
-        range_min = min_a
-    else:
-        range_min = min_b
+        # Get minimum and maximum values of the combined array
+        min_value = array.min()
+        max_value = array.max()
 
-    # Calculate the total data range of the two arrays
-    data_range = range_max - range_min
+    # Calculate an array of normalised data
+    normalised_array = (array - min_value) / max_value - min_value
 
-    # Normalise data
-    array_a_normalised = (array_a - range_min) / data_range
-    array_b_normalised = (array_b - range_min) / data_range
+    if clip is not None:
+        # Clip values to 0 to 1
+        normalised_array = normalised_array.clip(0.0, 1.0)
 
-    return array_a_normalised, array_b_normalised
+    return normalised_array
 
 
 def make_rgb_stack(
@@ -218,7 +226,13 @@ def sort_arrays_into_rgb_order(
     return channel_list
 
 
-def main(img_a_path: str, img_b_path: str, rgb_map_str: str, bbox_list: list = None):
+def main(
+    img_a_path: str,
+    img_b_path: str,
+    rgb_map_str: str,
+    bbox_list: list = None,
+    stretch: bool = False,
+):
     """
     Steps:
         * Read data as arrays
@@ -251,10 +265,14 @@ def main(img_a_path: str, img_b_path: str, rgb_map_str: str, bbox_list: list = N
         img_a_array = img_get_spatial_subset_of_array(img_a_array, *bbox_list)
         img_b_array = img_get_spatial_subset_of_array(img_b_array, *bbox_list)
 
-    # Normalise array values by the combined range of values
-    img_a_array_normalised, img_b_array_normalised = normalise_arrays(
-        img_a_array, img_b_array
-    )
+    if stretch:
+        stretch = [2, 98]
+    else:
+        stretch = None
+
+    # Normalise array values
+    img_a_array_normalised = normalise_arrays(img_a_array, stretch)
+    img_b_array_normalised = normalise_arrays(img_b_array, stretch)
 
     # Create a RGB stack
     rgb_array = make_rgb_stack(img_a_array_normalised, img_b_array_normalised, rgb_map)
@@ -272,7 +290,6 @@ if __name__ == "__main__":
         description=helpstring,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-
     parser.add_argument(
         "-a",
         "--image_a",
@@ -288,7 +305,6 @@ if __name__ == "__main__":
         required=True,
         help="Path to second input image",
     )
-
     parser.add_argument(
         "--rgb",
         default="aab",
@@ -298,7 +314,6 @@ if __name__ == "__main__":
             "results in R = --image_a, G = empty and B = --image_b"
         ),
     )
-
     parser.add_argument(
         "--bbox",
         type=float,
@@ -306,7 +321,13 @@ if __name__ == "__main__":
         metavar=("MIN_LON", "MAX_LON", "MIN_LAT", "MAX_LAT"),
         help="Bounding box as four floats: min_lon max_lon min_lat max_lat",
     )
+    parser.add_argument(
+        "--stretch",
+        default=False,
+        action="store_true",
+        help="Flag to apply a 2 percent contrast stretch to the input images",
+    )
 
     cmdline = parser.parse_args()
 
-    main(cmdline.image_a, cmdline.image_b, cmdline.rgb, cmdline.bbox)
+    main(cmdline.image_a, cmdline.image_b, cmdline.rgb, cmdline.bbox, cmdline.stretch)
