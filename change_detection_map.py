@@ -85,6 +85,42 @@ def resample_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tup
     return array_a, array_b
 
 
+def img_get_spatial_subset_of_array(
+    array: xarray.DataArray,
+    min_lon: float,
+    max_lon: float,
+    min_lat: float,
+    max_lat: float,
+) -> xarray.DataArray:
+    """
+    Return an array that has been spatially subset (or 'clipped') to an input bounding
+    box of coordinates
+
+    Input coordinates must be using the same coordinate system as the input array
+    """
+
+    # Define bounding box as a geometry expected by the rioxarray clip function
+    geometries = [
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [min_lon, min_lat],
+                    [min_lon, max_lat],
+                    [max_lon, max_lat],
+                    [max_lon, min_lat],
+                    [min_lon, min_lat],
+                ]
+            ],
+        }
+    ]
+
+    # Clip array to geometry
+    clipped = array.rio.clip(geometries)
+
+    return clipped
+
+
 def normalise_arrays(array_a: xarray.DataArray, array_b: xarray.DataArray) -> tuple:
     """
     Return arrays containing data normalised to the maximum range of the combined
@@ -182,12 +218,11 @@ def sort_arrays_into_rgb_order(
     return channel_list
 
 
-def main(
-    img_a_path: str, img_b_path: str, rgb_map_str: str, verbose=False, debug=False
-):
+def main(img_a_path: str, img_b_path: str, rgb_map_str: str, bbox_list: list = None):
     """
     Steps:
         * Read data as arrays
+        * Read input RGB channel order
         * Resample data if they have different grids
         * Normalise values
         * Visualise
@@ -201,11 +236,20 @@ def main(
     # detected
     rgb_map = get_rgb_map_from_string(rgb_map_str)
 
-    # Identify whether the data have different grids as we will need to resample the
-    # higher (finer) resolution grid to matchs the lower (coarser) resolution grid
+    # Identify whether the data have different grids
     if img_a_array.shape != img_b_array.shape:
-
+        # Resample the higher (finer) resolution grid to matchs the lower (coarser)
+        # resolution grid
         img_a_array, img_b_array = resample_arrays(img_a_array, img_b_array)
+
+    if bbox_list is not None:
+
+        # Get coordinates from bounding box list
+        min_lon, max_lon, min_lat, max_lat = bbox_list
+
+        # Get subset of input arrays within user defined bounding box
+        img_a_array = img_get_spatial_subset_of_array(img_a_array, *bbox_list)
+        img_b_array = img_get_spatial_subset_of_array(img_b_array, *bbox_list)
 
     # Normalise array values by the combined range of values
     img_a_array_normalised, img_b_array_normalised = normalise_arrays(
@@ -255,6 +299,14 @@ if __name__ == "__main__":
         ),
     )
 
+    parser.add_argument(
+        "--bbox",
+        type=float,
+        nargs=4,
+        metavar=("MIN_LON", "MAX_LON", "MIN_LAT", "MAX_LAT"),
+        help="Bounding box as four floats: min_lon max_lon min_lat max_lat",
+    )
+
     cmdline = parser.parse_args()
 
-    main(cmdline.image_a, cmdline.image_b, cmdline.rgb)
+    main(cmdline.image_a, cmdline.image_b, cmdline.rgb, cmdline.bbox)
