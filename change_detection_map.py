@@ -122,24 +122,18 @@ def img_get_spatial_subset_of_array(
 
 
 def normalise_arrays(
-    array_a: xarray.DataArray,
-    array_b: xarray.DataArray,
+    array: xarray.DataArray,
     percentile_range: list = None,
     clip: bool = True,
 ) -> tuple:
     """
-    Return arrays containing data normalised to the maximum range of the combined
-    input arrays.
+    Return array containing data normalised to values between 0 to 1.
 
     An optional percentile_range argument can be input in order to provide a contrast
     stretch to the values. This expects a two item list comprising of the minimum
     percentile and the maximum percentile in that order. For example, `[2, 98]` would
     result in a 2% contrast stretch.
     """
-
-    # Combine arrays so we can calculate the data percentile of the values in both
-    # arrays
-    combined_array = numpy.concatenate([array_a, array_b])
 
     # If there is no percentile clip input, then normalise using the minimum and maximum
     # values of the combined two datasets
@@ -149,31 +143,17 @@ def normalise_arrays(
         percentile_minimum, percentile_maximum = percentile_range
 
         # Calcualte percentile values from combined array
-        range_min, range_max = numpy.percentile(
-            combined_array, [percentile_minimum, percentile_maximum]
+        min_value, max_value = numpy.percentile(
+            array, [percentile_minimum, percentile_maximum]
         )
 
     else:
 
         # Get minimum and maximum values of the combined array
-        range_min = combined_array.min()
-        range_max = combined_array.max()
+        min_value = array.min()
+        max_value = array.max()
 
-    # Normalise data
-    array_a_normalised = normalise(array_a, range_min, range_max, clip=clip)
-    array_b_normalised = normalise(array_b, range_min, range_max, clip=clip)
-
-    return array_a_normalised, array_b_normalised
-
-
-def normalise(
-    array: xarray.DataArray, min_value: float, max_value: float, clip: bool = True
-) -> xarray.DataArray:
-    """
-    Normalise an input array to a defined minimum and maximum value
-    """
-
-    # Calculate an array or normalised data
+    # Calculate an array of normalised data
     normalised_array = (array - min_value) / max_value - min_value
 
     if clip is not None:
@@ -290,10 +270,9 @@ def main(
     else:
         stretch = None
 
-    # Normalise array values by the combined range of values
-    img_a_array_normalised, img_b_array_normalised = normalise_arrays(
-        img_a_array, img_b_array, stretch
-    )
+    # Normalise array values
+    img_a_array_normalised = normalise_arrays(img_a_array, stretch)
+    img_b_array_normalised = normalise_arrays(img_b_array, stretch)
 
     # Create a RGB stack
     rgb_array = make_rgb_stack(img_a_array_normalised, img_b_array_normalised, rgb_map)
