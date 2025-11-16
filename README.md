@@ -25,14 +25,15 @@ Run the code by executing `change_detection_map.py` script. It requires two argu
  * `--image_a` or `-a`: The path to the first input image
  * `--image_b` or `-b`: The path to the second input image
 
-There are two further optional arguents:
+There are three further optional arguents:
 
  * `--rgb`: This allows you to control what colour channel each image uses. It expects a string of three characters, either 'a', 'b' or '0'. 'a' represents `--image_a`, 'b' represents `--image_b` and '0' represents an empty channel. The order of these characters need to follow the order you would like them assigned to the Red, Green and Blue channels, in that order.
  * `--bbox`: This allows you to input a bounding box of coordinates to spatially subset an area of interest for the output image. These coordinates must match the input data coordinate system. It expects four coordinates in the order of:
- 1) Minimum longitude
- 2) Maximum longitude 
- 3) Minimum latitude
- 4) Maximum latitude
+  1) Minimum longitude
+  2) Maximum longitude 
+  3) Minimum latitude
+  4) Maximum latitude
+ * `--stretch`: This allows a default 2% percentile contrast stretch to be applied to each image.
 
 Examples:
 
